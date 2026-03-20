@@ -298,29 +298,51 @@ function buildTransactionPayload(formData) {
     if (!fuenteStr) throw new Error('Debes seleccionar el origen o destino de los fondos (Cuenta o Tarjeta).');
     if (!medioPago) throw new Error('El medio de pago es obligatorio en la Base de Datos.');
 
+    // Determinar medioPago basado en tipo de cuenta seleccionada
+    let medioPagoFinal = medioPago || 'TRANSFERENCIA';
+    if (fuenteStr.startsWith('CUENTA_')) {
+        const cuentaId = parseInt(fuenteStr.replace('CUENTA_', ''));
+        const cuenta = (AppState?.cuentas || []).find(c => c.id === cuentaId);
+        if (cuenta?.tipo === 'EFECTIVO') {
+            medioPagoFinal = 'EFECTIVO';
+        } else {
+            medioPagoFinal = 'TRANSFERENCIA';
+        }
+    } else if (fuenteStr.startsWith('TARJETA_')) {
+        medioPagoFinal = 'TARJETA';
+    }
+
     let payload = {
         workspaceId: parseInt(workspaceId),
         tipo,
         categoriaId: parseInt(categoriaId),
+        categoria_id: parseInt(categoriaId),
         fecha,
         monto: parseFloat(monto),
         descripcion,
-        medioPago: tipo === 'INGRESO' ? 'TRANSFERENCIA' : (medioPago || 'EFECTIVO')
+        medioPago: medioPagoFinal,
+        medio_pago: medioPagoFinal
     };
 
     if (beneficiarioId) {
         payload.beneficiarioId = parseInt(beneficiarioId);
+        payload.beneficiario_id = parseInt(beneficiarioId);
     }
 
-    // Resolviendo la Tarjeta de Credito o Cuenta segun su tipo (vienen unificados en fuenteStr)
+    // Resolviendo la Tarjeta de Credito o Cuenta — enviamos ambas convenciones (camelCase y snake_case)
+    // porque no sabemos cuál lee el backend real
     if (fuenteStr.startsWith('CUENTA_')) {
-        payload.cuentaId = parseInt(fuenteStr.replace('CUENTA_', ''));
+        const id = parseInt(fuenteStr.replace('CUENTA_', ''));
+        payload.cuentaId = id;
+        payload.cuenta_id = id;
     } else if (fuenteStr.startsWith('TARJETA_')) {
-        payload.tarjetaCreditoId = parseInt(fuenteStr.replace('TARJETA_', ''));
+        const id = parseInt(fuenteStr.replace('TARJETA_', ''));
+        payload.tarjetaCreditoId = id;
+        payload.tarjeta_credito_id = id;
     }
 
     // Validación de seguridad
-    if (tipo === 'INGRESO' && (payload.tarjetaCreditoId || payload.tarjeta_credito_id || payload.id_tarjeta_credito)) {
+    if (tipo === 'INGRESO' && (payload.tarjetaCreditoId || payload.tarjeta_credito_id)) {
         throw new Error("No puedes registrar un INGRESO directamente a una Tarjeta de Crédito. Usa una Cuenta normal.");
     }
 
