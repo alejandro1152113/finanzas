@@ -36,13 +36,29 @@ async function populateSelects() {
         btn.innerHTML = '<span class="spinner-sm"></span> Cargando datos...';
 
         // Fetch if empty, though normally we might fetch every time to be safe
-        const [catResp, benResp] = await Promise.all([
+        const [catResp, benResp, cuentasResp] = await Promise.all([
             api.getCategorias(AppState.workspaceId),
-            api.getBeneficiarios(AppState.workspaceId)
+            api.getBeneficiarios(AppState.workspaceId),
+            api.getCuentas(AppState.workspaceId)
         ]);
 
         AppState.categorias = catResp.data || [];
         AppState.beneficiarios = benResp.data || [];
+        
+        let cuentas = cuentasResp.data || [];
+        if (cuentas.length === 0) {
+            // Create a default account silently to satisfy backend constraints
+            const newCuenta = await api.createCuenta({
+                workspaceId: parseInt(AppState.workspaceId),
+                nombre: 'Cuenta Principal',
+                tipo: 'EFECTIVO',
+                moneda: 'COP',
+                saldoInicial: 0
+            });
+            AppState.defaultCuentaId = newCuenta.data.id;
+        } else {
+            AppState.defaultCuentaId = cuentas[0].id;
+        }
 
         // Validation rule: Must have at least 1 category
         const selectCat = document.getElementById('trx-categoria');
@@ -164,7 +180,8 @@ async function handleCreateTransaccion(e) {
             fecha: fecha,
             monto: parseFloat(monto),
             descripcion: descripcion,
-            medioPago: medioPago
+            medioPago: medioPago,
+            cuentaId: AppState.defaultCuentaId
         };
 
         if (beneficiarioId) {

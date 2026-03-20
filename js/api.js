@@ -69,6 +69,14 @@ export const api = {
     // Workspaces
     getWorkspaces: (usuarioId) => fetchAPI(`/api/workspaces?usuarioId=${usuarioId}`),
 
+    // Cuentas
+    getCuentas: (workspaceId) => fetchAPI(`/api/cuentas?workspaceId=${workspaceId}`),
+    
+    createCuenta: (payload) => fetchAPI('/api/cuentas', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    }),
+
     // Categorias
     getCategorias: (workspaceId) => fetchAPI(`/api/categorias?workspaceId=${workspaceId}`),
     
