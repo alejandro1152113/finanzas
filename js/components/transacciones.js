@@ -58,7 +58,7 @@ async function populateSelects() {
         
         let cuentas = cuentasResp.data || [];
         if (cuentas.length === 0) {
-            // Create a default account silently to satisfy backend constraints
+            // Create a default account silently if none exists
             const newCuenta = await api.createCuenta({
                 workspaceId: parseInt(AppState.workspaceId),
                 nombre: 'Cuenta Principal',
@@ -66,9 +66,22 @@ async function populateSelects() {
                 moneda: 'COP',
                 saldoInicial: 0
             });
-            AppState.defaultCuentaId = newCuenta.data.id;
-        } else {
-            AppState.defaultCuentaId = cuentas[0].id;
+            cuentas = [newCuenta.data];
+        } 
+
+        // Populate Cuentas Dropdown
+        const selectCuenta = document.getElementById('trx-cuenta');
+        selectCuenta.innerHTML = '<option value="">Seleccione Cuenta</option>';
+        cuentas.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = `${c.nombre} (${c.tipo})`;
+            selectCuenta.appendChild(opt);
+        });
+        
+        // Select the first one by default if exists
+        if(cuentas.length > 0) {
+            selectCuenta.value = cuentas[0].id;
         }
 
         // Validation rule: Must have at least 1 category
@@ -177,9 +190,15 @@ async function handleCreateTransaccion(e) {
     const fecha = document.getElementById('trx-fecha').value;
     const descripcion = document.getElementById('trx-descripcion').value;
     const medioPago = document.getElementById('trx-medio-pago').value;
+    const cuentaId = document.getElementById('trx-cuenta').value;
 
     if (!categoriaId) {
         showToast('Debes seleccionar una categoría.', 'error');
+        return;
+    }
+
+    if (!cuentaId) {
+        showToast('Debes seleccionar una Cuenta de origen/destino.', 'error');
         return;
     }
 
@@ -195,7 +214,7 @@ async function handleCreateTransaccion(e) {
             monto: parseFloat(monto),
             descripcion: descripcion,
             medioPago: medioPago,
-            cuentaId: AppState.defaultCuentaId
+            cuentaId: parseInt(cuentaId)
         };
 
         if (beneficiarioId) {
