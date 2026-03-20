@@ -87,7 +87,6 @@ async function populateSelects() {
 
         let cards = cardsResp.data || [];
         if (cards.length === 0) {
-            // Generar Tarjeta para poder enviar GASTOS de forma segura sin romper FK
             try {
                 const newCard = await api.createCreditCard({
                     workspaceId: parseInt(AppState.workspaceId),
@@ -97,13 +96,26 @@ async function populateSelects() {
                     diaCorte: 15,
                     diaPago: 30
                 });
-                AppState.defaultTarjetaId = newCard.data.id;
-            } catch(e) {
-                AppState.defaultTarjetaId = 1; // Fallback
-            }
-        } else {
-            AppState.defaultTarjetaId = cards[0].id;
+                cards = [newCard.data];
+            } catch(e) {}
         }
+        
+        // Populate Tarjetas Dropdown
+        const selectTarjeta = document.getElementById('trx-tarjeta');
+        selectTarjeta.innerHTML = '<option value="">Seleccione Tarjeta</option>';
+        cards.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = `${t.nombre} (${t.franquicia || 'N/A'}) - Cupo: ${t.cupo}`;
+            selectTarjeta.appendChild(opt);
+        });
+
+        if(cards.length > 0) {
+            selectTarjeta.value = cards[0].id;
+        }
+
+        // Setup toggles for visibility based on Payment Rules
+        setupTransactionFormToggles();
 
         // Validation rule: Must have at least 1 category
         const selectCat = document.getElementById('trx-categoria');
@@ -158,6 +170,43 @@ function filterCategoriesByType() {
     });
 }
 
+function setupTransactionFormToggles() {
+    const trxTipo = document.getElementById('trx-tipo');
+    const trxMedioPago = document.getElementById('trx-medio-pago');
+    const grupoCuenta = document.getElementById('grupo-cuenta');
+    const grupoTarjeta = document.getElementById('grupo-tarjeta');
+    const grupoMedioPago = document.getElementById('grupo-medio-pago');
+
+    function updateFormVisibility() {
+        const tipo = trxTipo.value;
+        const medio = trxMedioPago.value;
+
+        if (tipo === 'INGRESO') {
+            // INGRESO uses ONLY Cuenta
+            grupoCuenta.classList.remove('hidden');
+            grupoTarjeta.classList.add('hidden');
+            grupoMedioPago.classList.add('hidden'); // MedioPago is not sent for INGRESOS
+        } else {
+            // GASTO uses MedioPago
+            grupoMedioPago.classList.remove('hidden');
+            
+            if (medio === 'TARJETA') {
+                grupoCuenta.classList.add('hidden');
+                grupoTarjeta.classList.remove('hidden');
+            } else {
+                grupoCuenta.classList.remove('hidden');
+                grupoTarjeta.classList.add('hidden');
+            }
+        }
+    }
+
+    trxTipo.addEventListener('change', updateFormVisibility);
+    trxMedioPago.addEventListener('change', updateFormVisibility);
+    
+    // Initial call
+    updateFormVisibility();
+}
+
 async function loadTransacciones() {
     const tbody = document.getElementById('lista-transacciones');
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><span class="spinner-sm"></span> Cargando...</td></tr>';
@@ -203,7 +252,7 @@ async function loadTransacciones() {
 function buildTransactionPayload(formData) {
     const { 
         workspaceId, tipo, categoriaId, beneficiarioId, 
-        fecha, monto, descripcion, cuentaId 
+        fecha, monto, descripcion, medioPago, cuentaId, tarjetaCreditoId
     } = formData;
 
     if (!categoriaId) throw new Error('Debes seleccionar una categoría.');
@@ -224,12 +273,18 @@ function buildTransactionPayload(formData) {
 
     // Regla estricta encontrada por ChatGPT
     if (tipo === 'INGRESO') {
-        if (!cuentaId) throw new Error('Un INGRESO requiere asignar una cuenta.');
+        if (!cuentaId) throw new Error('Un INGRESO requiere de una Cuenta Destino.');
         payload.cuentaId = parseInt(cuentaId);
     } 
     else if (tipo === 'GASTO') {
-        payload.medioPago = 'TARJETA';
-        payload.tarjetaCreditoId = AppState.defaultTarjetaId || 1;
+        payload.medioPago = medioPago;
+        if (medioPago === 'TARJETA') {
+            if (!tarjetaCreditoId) throw new Error('Debes seleccionar la Tarjeta de Crédito para usar como medio de pago.');
+            payload.tarjetaCreditoId = parseInt(tarjetaCreditoId);
+        } else {
+            if (!cuentaId) throw new Error('Debes seleccionar una Cuenta de Origen para usar Efectivo o Transferencia.');
+            payload.cuentaId = parseInt(cuentaId);
+        }
     }
 
     return payload;
@@ -249,7 +304,7 @@ async function handleCreateTransaccion(e) {
         descripcion: document.getElementById('trx-descripcion').value,
         medioPago: document.getElementById('trx-medio-pago').value,
         cuentaId: document.getElementById('trx-cuenta').value,
-        tarjetaCreditoId: null // Aún no soportado en vista HTML
+        tarjetaCreditoId: document.getElementById('trx-tarjeta').value
     };
 
     let payload;
