@@ -21,8 +21,11 @@ export async function initTransacciones() {
 
         document.getElementById('form-transaccion').addEventListener('submit', handleCreateTransaccion);
         
-        // Listen to Type change to filter Categories
-        document.getElementById('trx-tipo').addEventListener('change', filterCategoriesByType);
+        // Listen to Type change to filter Categories and Fuentes
+        document.getElementById('trx-tipo').addEventListener('change', () => {
+            filterCategoriesByType();
+            filterFuentesByType();
+        });
         
         // Listen to deletes
         document.getElementById('lista-transacciones').addEventListener('click', async (e) => {
@@ -69,40 +72,25 @@ async function populateSelects() {
             });
             cuentas = [newCuenta.data];
         } 
+        AppState.cuentas = cuentas;
 
         let cards = cardsResp.data || [];
-        
-        // Unificar Cuentas y Tarjetas en trx-fuente
-        const selectFuente = document.getElementById('trx-fuente');
-        selectFuente.innerHTML = '<option value="">Seleccione Cuenta o Tarjeta</option>';
-
-        if (cuentas.length > 0) {
-            const grpC = document.createElement('optgroup');
-            grpC.label = 'Cuentas Bancarias / Billeteras';
-            cuentas.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = `CUENTA_${c.id}`;
-                opt.textContent = `${c.nombre} (${c.tipo})`;
-                grpC.appendChild(opt);
-            });
-            selectFuente.appendChild(grpC);
+        if (cards.length === 0) {
+            try {
+                const newCard = await api.createCreditCard({
+                    workspaceId: parseInt(AppState.workspaceId),
+                    nombre: 'Tarjeta de Gastos Virtual',
+                    franquicia: 'VISA',
+                    cupo: 5000000,
+                    diaCorte: 15,
+                    diaPago: 30
+                });
+                cards = [newCard.data];
+            } catch(e) {}
         }
+        AppState.tarjetas = cards;
 
-        if (cards.length > 0) {
-            const grpT = document.createElement('optgroup');
-            grpT.label = 'Tarjetas de Crédito';
-            cards.forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = `TARJETA_${t.id}`;
-                opt.textContent = `${t.nombre} (${t.franquicia || 'N/A'}) - Cupo: ${t.cupo}`;
-                grpT.appendChild(opt);
-            });
-            selectFuente.appendChild(grpT);
-        }
-
-        // Seleccionar la primera fuente disponible por defecto
-        if(cuentas.length > 0) selectFuente.value = `CUENTA_${cuentas[0].id}`;
-        else if(cards.length > 0) selectFuente.value = `TARJETA_${cards[0].id}`;
+        filterFuentesByType();
 
         // Validation rule: Must have at least 1 category
         const selectCat = document.getElementById('trx-categoria');
@@ -155,6 +143,54 @@ function filterCategoriesByType() {
         opt.textContent = c.nombre;
         selectCat.appendChild(opt);
     });
+}
+
+// Aplica la lógica estricta del constraint del Backend
+function filterFuentesByType() {
+    const tipo = document.getElementById('trx-tipo').value;
+    const selectFuente = document.getElementById('trx-fuente');
+    const selectMedioPago = document.getElementById('trx-medio-pago');
+    const grupoMedioPago = document.getElementById('grupo-medio-pago');
+    
+    selectFuente.innerHTML = '<option value="">Seleccione Origen/Destino</option>';
+
+    if (tipo === 'INGRESO') {
+        const grpC = document.createElement('optgroup');
+        grpC.label = 'Cuentas Bancarias / Billeteras (Solo Ingresos)';
+        (AppState.cuentas || []).forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = `CUENTA_${c.id}`;
+            opt.textContent = `${c.nombre} (${c.tipo})`;
+            grpC.appendChild(opt);
+        });
+        selectFuente.appendChild(grpC);
+        
+        // Bloquear Medio de pago porque el backend prefiere TRANSFERENCIA o EFECTIVO para ingresos, no tarjetas (y no es vital pa UI ahora)
+        grupoMedioPago.classList.remove('hidden');
+        selectMedioPago.value = 'TRANSFERENCIA'; 
+        
+        if(AppState.cuentas && AppState.cuentas.length > 0) {
+            selectFuente.value = `CUENTA_${AppState.cuentas[0].id}`;
+        }
+    } else if (tipo === 'GASTO') {
+        const grpT = document.createElement('optgroup');
+        grpT.label = 'Tarjetas de Crédito (Requerido para Gastos)';
+        (AppState.tarjetas || []).forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = `TARJETA_${t.id}`;
+            opt.textContent = `${t.nombre} (${t.franquicia || 'N/A'}) - Cupo: ${t.cupo}`;
+            grpT.appendChild(opt);
+        });
+        selectFuente.appendChild(grpT);
+
+        // Bloquear Medio de pago obligatoriamente a TARJETA
+        grupoMedioPago.classList.add('hidden');
+        selectMedioPago.value = 'TARJETA';
+
+        if(AppState.tarjetas && AppState.tarjetas.length > 0) {
+            selectFuente.value = `TARJETA_${AppState.tarjetas[0].id}`;
+        }
+    }
 }
 
 async function loadTransacciones() {
