@@ -146,6 +146,7 @@ async function handleCreateTransaccion(e) {
     const monto = document.getElementById('trx-monto').value;
     const fecha = document.getElementById('trx-fecha').value;
     const descripcion = document.getElementById('trx-descripcion').value;
+    const medioPago = document.getElementById('trx-medio-pago').value;
 
     if (!categoriaId) {
         showToast('Debes seleccionar una categoría.', 'error');
@@ -162,7 +163,8 @@ async function handleCreateTransaccion(e) {
             categoriaId: parseInt(categoriaId),
             fecha: fecha,
             monto: parseFloat(monto),
-            descripcion: descripcion
+            descripcion: descripcion,
+            medioPago: medioPago
         };
 
         if (beneficiarioId) {
