@@ -90,12 +90,13 @@ async function loadCuentas() {
         tbody.innerHTML = '';
         AppState.cuentas.forEach(c => {
             const tr = document.createElement('tr');
+            const saldoMostrar = c.saldo !== undefined ? c.saldo : (c.saldoInicial !== undefined ? c.saldoInicial : 0);
             tr.innerHTML = `
                 <td>#${c.id}</td>
                 <td style="font-weight: 500;">${c.nombre}</td>
                 <td><span class="badge" style="background:var(--primary); color:white;">${c.tipo}</span></td>
                 <td>${c.moneda}</td>
-                <td class="font-bold">${formatCurrency(c.saldo)}</td>
+                <td class="font-bold">${formatCurrency(saldoMostrar)}</td>
                 <td>
                     <button class="btn btn-edit-cta" data-id="${c.id}" style="padding: 6px 10px; background: transparent; color: var(--warning); border: 1px solid var(--warning);"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn btn-delete-cta" data-id="${c.id}" style="padding: 6px 10px; background: transparent; color: var(--danger); border: 1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
