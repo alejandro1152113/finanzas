@@ -70,52 +70,39 @@ async function populateSelects() {
             cuentas = [newCuenta.data];
         } 
 
-        // Populate Cuentas Dropdown
-        const selectCuenta = document.getElementById('trx-cuenta');
-        selectCuenta.innerHTML = '<option value="">Seleccione Cuenta</option>';
-        cuentas.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.textContent = `${c.nombre} (${c.tipo})`;
-            selectCuenta.appendChild(opt);
-        });
-        
-        // Select the first one by default if exists
-        if(cuentas.length > 0) {
-            selectCuenta.value = cuentas[0].id;
-        }
-
         let cards = cardsResp.data || [];
-        if (cards.length === 0) {
-            try {
-                const newCard = await api.createCreditCard({
-                    workspaceId: parseInt(AppState.workspaceId),
-                    nombre: 'Tarjeta de Gastos Virtual',
-                    franquicia: 'VISA',
-                    cupo: 5000000,
-                    diaCorte: 15,
-                    diaPago: 30
-                });
-                cards = [newCard.data];
-            } catch(e) {}
-        }
         
-        // Populate Tarjetas Dropdown
-        const selectTarjeta = document.getElementById('trx-tarjeta');
-        selectTarjeta.innerHTML = '<option value="">Seleccione Tarjeta</option>';
-        cards.forEach(t => {
-            const opt = document.createElement('option');
-            opt.value = t.id;
-            opt.textContent = `${t.nombre} (${t.franquicia || 'N/A'}) - Cupo: ${t.cupo}`;
-            selectTarjeta.appendChild(opt);
-        });
+        // Unificar Cuentas y Tarjetas en trx-fuente
+        const selectFuente = document.getElementById('trx-fuente');
+        selectFuente.innerHTML = '<option value="">Seleccione Cuenta o Tarjeta</option>';
 
-        if(cards.length > 0) {
-            selectTarjeta.value = cards[0].id;
+        if (cuentas.length > 0) {
+            const grpC = document.createElement('optgroup');
+            grpC.label = 'Cuentas Bancarias / Billeteras';
+            cuentas.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = `CUENTA_${c.id}`;
+                opt.textContent = `${c.nombre} (${c.tipo})`;
+                grpC.appendChild(opt);
+            });
+            selectFuente.appendChild(grpC);
         }
 
-        // Setup toggles for visibility based on Payment Rules
-        setupTransactionFormToggles();
+        if (cards.length > 0) {
+            const grpT = document.createElement('optgroup');
+            grpT.label = 'Tarjetas de Crédito';
+            cards.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = `TARJETA_${t.id}`;
+                opt.textContent = `${t.nombre} (${t.franquicia || 'N/A'}) - Cupo: ${t.cupo}`;
+                grpT.appendChild(opt);
+            });
+            selectFuente.appendChild(grpT);
+        }
+
+        // Seleccionar la primera fuente disponible por defecto
+        if(cuentas.length > 0) selectFuente.value = `CUENTA_${cuentas[0].id}`;
+        else if(cards.length > 0) selectFuente.value = `TARJETA_${cards[0].id}`;
 
         // Validation rule: Must have at least 1 category
         const selectCat = document.getElementById('trx-categoria');
@@ -170,43 +157,6 @@ function filterCategoriesByType() {
     });
 }
 
-function setupTransactionFormToggles() {
-    const trxTipo = document.getElementById('trx-tipo');
-    const trxMedioPago = document.getElementById('trx-medio-pago');
-    const grupoCuenta = document.getElementById('grupo-cuenta');
-    const grupoTarjeta = document.getElementById('grupo-tarjeta');
-    const grupoMedioPago = document.getElementById('grupo-medio-pago');
-
-    function updateFormVisibility() {
-        const tipo = trxTipo.value;
-        const medio = trxMedioPago.value;
-
-        if (tipo === 'INGRESO') {
-            // INGRESO uses ONLY Cuenta
-            grupoCuenta.classList.remove('hidden');
-            grupoTarjeta.classList.add('hidden');
-            grupoMedioPago.classList.add('hidden'); // MedioPago is not sent for INGRESOS
-        } else {
-            // GASTO uses MedioPago
-            grupoMedioPago.classList.remove('hidden');
-            
-            if (medio === 'TARJETA') {
-                grupoCuenta.classList.add('hidden');
-                grupoTarjeta.classList.remove('hidden');
-            } else {
-                grupoCuenta.classList.remove('hidden');
-                grupoTarjeta.classList.add('hidden');
-            }
-        }
-    }
-
-    trxTipo.addEventListener('change', updateFormVisibility);
-    trxMedioPago.addEventListener('change', updateFormVisibility);
-    
-    // Initial call
-    updateFormVisibility();
-}
-
 async function loadTransacciones() {
     const tbody = document.getElementById('lista-transacciones');
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><span class="spinner-sm"></span> Cargando...</td></tr>';
@@ -252,11 +202,13 @@ async function loadTransacciones() {
 function buildTransactionPayload(formData) {
     const { 
         workspaceId, tipo, categoriaId, beneficiarioId, 
-        fecha, monto, descripcion, medioPago, cuentaId, tarjetaCreditoId
+        fecha, monto, descripcion, medioPago, fuenteStr
     } = formData;
 
     if (!categoriaId) throw new Error('Debes seleccionar una categoría.');
     if (!monto || monto <= 0) throw new Error('El monto debe ser mayor a 0.');
+    if (!fuenteStr) throw new Error('Debes seleccionar el origen o destino de los fondos (Cuenta o Tarjeta).');
+    if (!medioPago) throw new Error('El medio de pago es obligatorio en la Base de Datos.');
 
     let payload = {
         workspaceId: parseInt(workspaceId),
@@ -264,27 +216,24 @@ function buildTransactionPayload(formData) {
         categoriaId: parseInt(categoriaId),
         fecha,
         monto: parseFloat(monto),
-        descripcion
+        descripcion,
+        medioPago
     };
 
     if (beneficiarioId) {
         payload.beneficiarioId = parseInt(beneficiarioId);
     }
 
-    // Regla estricta encontrada por ChatGPT
-    if (tipo === 'INGRESO') {
-        if (!cuentaId) throw new Error('Un INGRESO requiere de una Cuenta Destino.');
-        payload.cuentaId = parseInt(cuentaId);
-    } 
-    else if (tipo === 'GASTO') {
-        payload.medioPago = medioPago;
-        if (medioPago === 'TARJETA') {
-            if (!tarjetaCreditoId) throw new Error('Debes seleccionar la Tarjeta de Crédito para usar como medio de pago.');
-            payload.tarjetaCreditoId = parseInt(tarjetaCreditoId);
-        } else {
-            if (!cuentaId) throw new Error('Debes seleccionar una Cuenta de Origen para usar Efectivo o Transferencia.');
-            payload.cuentaId = parseInt(cuentaId);
-        }
+    // Resolviendo la Tarjeta de Credito o Cuenta segun su tipo (vienen unificados en fuenteStr)
+    if (fuenteStr.startsWith('CUENTA_')) {
+        payload.cuentaId = parseInt(fuenteStr.replace('CUENTA_', ''));
+    } else if (fuenteStr.startsWith('TARJETA_')) {
+        payload.tarjetaCreditoId = parseInt(fuenteStr.replace('TARJETA_', ''));
+    }
+
+    // Validación de seguridad para que no intentes ingresar un sueldo directo a una Tarjeta de Crédito (el DB normalmente rompe aquí)
+    if (tipo === 'INGRESO' && payload.tarjetaCreditoId) {
+        throw new Error("No puedes registrar un INGRESO directamente a una Tarjeta de Crédito. Usa una Cuenta normal.");
     }
 
     return payload;
@@ -303,8 +252,7 @@ async function handleCreateTransaccion(e) {
         fecha: document.getElementById('trx-fecha').value,
         descripcion: document.getElementById('trx-descripcion').value,
         medioPago: document.getElementById('trx-medio-pago').value,
-        cuentaId: document.getElementById('trx-cuenta').value,
-        tarjetaCreditoId: document.getElementById('trx-tarjeta').value
+        fuenteStr: document.getElementById('trx-fuente').value
     };
 
     let payload;
