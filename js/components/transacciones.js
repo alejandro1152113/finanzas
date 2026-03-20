@@ -23,6 +23,17 @@ export async function initTransacciones() {
         
         // Listen to Type change to filter Categories
         document.getElementById('trx-tipo').addEventListener('change', filterCategoriesByType);
+        
+        // Listen to deletes
+        document.getElementById('lista-transacciones').addEventListener('click', async (e) => {
+            const btnDelete = e.target.closest('.btn-delete-trx');
+            if (btnDelete) {
+                const id = btnDelete.dataset.id;
+                if (confirm('¿Seguro que deseas eliminar esta transacción permanentemente?')) {
+                    await deleteTransaccion(id);
+                }
+            }
+        });
     }
 
     await loadTransacciones();
@@ -143,6 +154,9 @@ async function loadTransacciones() {
                 <td>${tx.descripcion || '--'}</td>
                 <td>${tx.beneficiarioNombre || '--'}</td>
                 <td class="${montoClass} font-bold">${sign}${formatCurrency(tx.monto)}</td>
+                <td>
+                    <button class="btn btn-delete-trx" data-id="${tx.id}" style="padding: 6px 10px; background: transparent; color: var(--danger); border: 1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                </td>
             `;
             tbody.appendChild(tr);
         });
@@ -198,5 +212,15 @@ async function handleCreateTransaccion(e) {
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Registrar Movimiento';
+    }
+}
+
+async function deleteTransaccion(id) {
+    try {
+        await api.deleteTransaccion(id);
+        showToast('Transacción eliminada con éxito');
+        await loadTransacciones();
+    } catch (error) {
+        showToast(error.message || 'Error al eliminar', 'error');
     }
 }

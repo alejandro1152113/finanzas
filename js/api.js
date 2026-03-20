@@ -85,6 +85,15 @@ export const api = {
         body: JSON.stringify(payload)
     }),
 
+    updateCategoria: (id, payload) => fetchAPI(`/api/categorias/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+    }),
+
+    deleteCategoria: (id) => fetchAPI(`/api/categorias/${id}`, {
+        method: 'DELETE'
+    }),
+
     // Beneficiarios
     getBeneficiarios: (workspaceId) => fetchAPI(`/api/beneficiarios?workspaceId=${workspaceId}`),
     
@@ -93,12 +102,25 @@ export const api = {
         body: JSON.stringify(payload)
     }),
 
+    updateBeneficiario: (id, payload) => fetchAPI(`/api/beneficiarios/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+    }),
+
+    deleteBeneficiario: (id) => fetchAPI(`/api/beneficiarios/${id}`, {
+        method: 'DELETE'
+    }),
+
     // Transacciones
     getTransacciones: (workspaceId) => fetchAPI(`/api/transactions?workspaceId=${workspaceId}`),
     
     createTransaccion: (payload) => fetchAPI('/api/transactions', {
         method: 'POST',
         body: JSON.stringify(payload)
+    }),
+
+    deleteTransaccion: (id) => fetchAPI(`/api/transactions/${id}`, {
+        method: 'DELETE'
     }),
 
     // Dashboard & Reportes

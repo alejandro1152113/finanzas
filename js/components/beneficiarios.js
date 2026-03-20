@@ -4,16 +4,37 @@ import { showToast, initModal } from '../utils.js';
 
 let modalCtx = null;
 
+export let benEditId = null;
+
 export async function initBeneficiarios() {
     if (!modalCtx) {
         modalCtx = initModal('modal-beneficiario');
         
         document.getElementById('btn-nuevo-beneficiario').addEventListener('click', () => {
+            benEditId = null;
             document.getElementById('form-beneficiario').reset();
+            document.querySelector('#modal-beneficiario .modal-title').textContent = 'Nuevo Beneficiario';
             modalCtx.open();
         });
 
-        document.getElementById('form-beneficiario').addEventListener('submit', handleCreateBeneficiario);
+        document.getElementById('form-beneficiario').addEventListener('submit', handleSaveBeneficiario);
+        
+        // Event delegation for table buttons
+        document.getElementById('lista-beneficiarios').addEventListener('click', async (e) => {
+            const btnDelete = e.target.closest('.btn-delete-ben');
+            if (btnDelete) {
+                const id = btnDelete.dataset.id;
+                if (confirm('¿Seguro que deseas eliminar este beneficiario?')) {
+                    await deleteBeneficiario(id);
+                }
+            }
+
+            const btnEdit = e.target.closest('.btn-edit-ben');
+            if (btnEdit) {
+                const id = btnEdit.dataset.id;
+                openEditBeneficiario(id);
+            }
+        });
     }
 
     await loadBeneficiarios();
@@ -39,6 +60,10 @@ async function loadBeneficiarios() {
                 <td>#${b.id}</td>
                 <td style="font-weight: 500;">${b.nombre}</td>
                 <td>${b.activo ? '<span class="text-success"><i class="fa-solid fa-check"></i> Activo</span>' : '<span class="text-danger"><i class="fa-solid fa-xmark"></i> Inactivo</span>'}</td>
+                <td>
+                    <button class="btn btn-edit-ben" data-id="${b.id}" style="padding: 6px 10px; background: transparent; color: var(--warning); border: 1px solid var(--warning);"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-delete-ben" data-id="${b.id}" style="padding: 6px 10px; background: transparent; color: var(--danger); border: 1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                </td>
             `;
             tbody.appendChild(tr);
         });
@@ -48,7 +73,27 @@ async function loadBeneficiarios() {
     }
 }
 
-async function handleCreateBeneficiario(e) {
+async function deleteBeneficiario(id) {
+    try {
+        await api.deleteBeneficiario(id);
+        showToast('Beneficiario eliminado');
+        await loadBeneficiarios();
+    } catch (error) {
+        showToast(error.message || 'Error al eliminar', 'error');
+    }
+}
+
+function openEditBeneficiario(id) {
+    const ben = AppState.beneficiarios.find(b => b.id == id);
+    if (!ben) return;
+    
+    benEditId = ben.id;
+    document.getElementById('ben-nombre').value = ben.nombre;
+    document.querySelector('#modal-beneficiario .modal-title').textContent = 'Editar Beneficiario';
+    modalCtx.open();
+}
+
+async function handleSaveBeneficiario(e) {
     e.preventDefault();
     const btn = e.target.querySelector('button[type="submit"]');
     const nombre = document.getElementById('ben-nombre').value;
@@ -62,13 +107,18 @@ async function handleCreateBeneficiario(e) {
             nombre: nombre
         };
 
-        await api.createBeneficiario(payload);
-        showToast('Beneficiario creado exitosamente');
-        modalCtx.close();
+        if (benEditId) {
+            await api.updateBeneficiario(benEditId, payload);
+            showToast('Beneficiario actualizado exitosamente');
+        } else {
+            await api.createBeneficiario(payload);
+            showToast('Beneficiario creado exitosamente');
+        }
         
+        modalCtx.close();
         await loadBeneficiarios();
     } catch (error) {
-        showToast(error.message || 'Error al crear el beneficiario', 'error');
+        showToast(error.message || 'Error al guardar el beneficiario', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Guardar Beneficiario';
