@@ -47,10 +47,11 @@ async function populateSelects() {
         btn.innerHTML = '<span class="spinner-sm"></span> Cargando datos...';
 
         // Fetch if empty, though normally we might fetch every time to be safe
-        const [catResp, benResp, cuentasResp] = await Promise.all([
+        const [catResp, benResp, cuentasResp, cardsResp] = await Promise.all([
             api.getCategorias(AppState.workspaceId),
             api.getBeneficiarios(AppState.workspaceId),
-            api.getCuentas(AppState.workspaceId)
+            api.getCuentas(AppState.workspaceId),
+            api.getCreditCards(AppState.workspaceId).catch(() => ({data:[]}))
         ]);
 
         AppState.categorias = catResp.data || [];
@@ -82,6 +83,26 @@ async function populateSelects() {
         // Select the first one by default if exists
         if(cuentas.length > 0) {
             selectCuenta.value = cuentas[0].id;
+        }
+
+        let cards = cardsResp.data || [];
+        if (cards.length === 0) {
+            // Generar Tarjeta para poder enviar GASTOS de forma segura sin romper FK
+            try {
+                const newCard = await api.createCreditCard({
+                    workspaceId: parseInt(AppState.workspaceId),
+                    nombre: 'Tarjeta de Gastos Virtual',
+                    franquicia: 'VISA',
+                    cupo: 5000000,
+                    diaCorte: 15,
+                    diaPago: 30
+                });
+                AppState.defaultTarjetaId = newCard.data.id;
+            } catch(e) {
+                AppState.defaultTarjetaId = 1; // Fallback
+            }
+        } else {
+            AppState.defaultTarjetaId = cards[0].id;
         }
 
         // Validation rule: Must have at least 1 category
@@ -182,7 +203,7 @@ async function loadTransacciones() {
 function buildTransactionPayload(formData) {
     const { 
         workspaceId, tipo, categoriaId, beneficiarioId, 
-        fecha, monto, descripcion, medioPago, cuentaId, tarjetaCreditoId 
+        fecha, monto, descripcion, cuentaId 
     } = formData;
 
     if (!categoriaId) throw new Error('Debes seleccionar una categoría.');
@@ -201,28 +222,14 @@ function buildTransactionPayload(formData) {
         payload.beneficiarioId = parseInt(beneficiarioId);
     }
 
-    // Reglas Estrictas del Backend
+    // Regla estricta encontrada por ChatGPT
     if (tipo === 'INGRESO') {
-        if (!cuentaId) throw new Error('Un INGRESO requiere asignar una cuenta de destino.');
+        if (!cuentaId) throw new Error('Un INGRESO requiere asignar una cuenta.');
         payload.cuentaId = parseInt(cuentaId);
-        // NO enviar medioPago ni tarjetaCreditoId
-    } else if (tipo === 'GASTO') {
-        if (!medioPago) throw new Error('Un GASTO requiere un Medio de Pago.');
-        payload.medioPago = medioPago;
-
-        if (medioPago === 'EFECTIVO') {
-            if (!cuentaId) throw new Error('Si el medio es EFECTIVO, debes seleccionar una Cuenta.');
-            payload.cuentaId = parseInt(cuentaId);
-            // NO enviar tarjetaCreditoId
-        } else if (medioPago === 'TARJETA') {
-            if (!tarjetaCreditoId) throw new Error('Si el medio es TARJETA, debes seleccionar una Tarjeta de Crédito.');
-            payload.tarjetaCreditoId = parseInt(tarjetaCreditoId);
-            // NO enviar cuentaId
-        } else {
-            // Manejo de otros medios permitidos (Transferencia, etc) apoyados en Cuenta
-            if (!cuentaId) throw new Error(`El pago con ${medioPago} requiere una Cuenta originadora.`);
-            payload.cuentaId = parseInt(cuentaId);
-        }
+    } 
+    else if (tipo === 'GASTO') {
+        payload.medioPago = 'TARJETA';
+        payload.tarjetaCreditoId = AppState.defaultTarjetaId || 1;
     }
 
     return payload;

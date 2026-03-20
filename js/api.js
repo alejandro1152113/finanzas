@@ -77,6 +77,10 @@ export const api = {
         body: JSON.stringify(payload)
     }),
 
+    // Tarjetas
+    getCreditCards: (workspaceId) => fetchAPI(`/api/credit-cards?workspaceId=${workspaceId}`),
+    createCreditCard: (payload) => fetchAPI('/api/credit-cards', { method: 'POST', body: JSON.stringify(payload) }),
+
     updateCuenta: (id, payload) => fetchAPI(`/api/cuentas/${id}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
