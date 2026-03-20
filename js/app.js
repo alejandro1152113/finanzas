@@ -1,6 +1,8 @@
 import { api } from './api.js';
 import { showToast, initModal, formatDate } from './utils.js';
+import { initDashboard } from './components/dashboard.js';
 import { initCategorias } from './components/categorias.js';
+import { initCuentas } from './components/cuentas.js';
 // We will import others as we build them
 
 // Global App State
@@ -140,6 +142,9 @@ export async function loadView(viewName) {
             case 'transacciones':
                 const { initTransacciones } = await import('./components/transacciones.js');
                 initTransacciones();
+                break;
+            case 'cuentas':
+                initCuentas();
                 break;
         }
     } catch (e) {

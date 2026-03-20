@@ -77,6 +77,15 @@ export const api = {
         body: JSON.stringify(payload)
     }),
 
+    updateCuenta: (id, payload) => fetchAPI(`/api/cuentas/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+    }),
+
+    deleteCuenta: (id) => fetchAPI(`/api/cuentas/${id}`, {
+        method: 'DELETE'
+    }),
+
     // Categorias
     getCategorias: (workspaceId) => fetchAPI(`/api/categorias?workspaceId=${workspaceId}`),
     
