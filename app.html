@@ -39,6 +39,14 @@
                     <i class="fa-solid fa-wallet"></i>
                     <span>Cuentas</span>
                 </a>
+                <a href="#" class="nav-item" data-view="presupuesto">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <span>Presupuesto</span>
+                </a>
+                <a href="#" class="nav-item" data-view="recurrentes">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Suscripciones / Fijos</span>
+                </a>
             </nav>
         </aside>
 
@@ -245,6 +253,76 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Presupuesto View -->
+                <div id="view-presupuesto" class="view-section hidden">
+                    <div class="flex-between" style="margin-bottom: 20px;">
+                        <h2>Presupuesto Mensual</h2>
+                        <div>
+                            <span id="presupuesto-periodo" style="font-weight: 600; margin-right: 15px;">Marzo 2024</span>
+                            <button class="btn btn-primary" id="btn-generar-presupuesto">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Generar/Sincronizar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid-3" style="margin-bottom: 25px;">
+                        <div class="stat-card glass-panel">
+                            <h3>Planeado</h3>
+                            <div class="amount" id="pre-total-planeado" style="color: var(--primary);">$0</div>
+                        </div>
+                        <div class="stat-card glass-panel">
+                            <h3>Ejecutado</h3>
+                            <div class="amount" id="pre-total-ejecutado">$0</div>
+                        </div>
+                        <div class="stat-card glass-panel">
+                            <h3>Diferencia</h3>
+                            <div class="amount" id="pre-total-dif">$0</div>
+                        </div>
+                    </div>
+                    <div class="glass-panel table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Categoría / Item</th>
+                                    <th>Planeado</th>
+                                    <th>Ejecutado</th>
+                                    <th>Progreso</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-presupuesto">
+                                <tr><td colspan="5" style="text-align:center;">Cargando presupuesto...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recurrentes View -->
+                <div id="view-recurrentes" class="view-section hidden">
+                    <div class="flex-between" style="margin-bottom: 20px;">
+                        <h2>Gastos Fijos e Ingresos Recurrentes</h2>
+                        <button class="btn btn-primary" id="btn-nuevo-recurrente">
+                            <i class="fa-solid fa-plus"></i> Nuevo Item Recurrente
+                        </button>
+                    </div>
+                    <div class="glass-panel table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Tipo</th>
+                                    <th>Categoría</th>
+                                    <th>Monto Defecto</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-recurrentes">
+                                <tr><td colspan="6" style="text-align:center;">Cargando items recurrentes...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -304,15 +382,15 @@
                         <option value="INGRESO">Ingreso</option>
                     </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="grp-trx-categoria">
                     <label>Categoría</label>
                     <select id="trx-categoria" required>
                         <option value="">Seleccione Categoría</option>
                     </select>
                     <small style="color:var(--warning); display:none;" id="trx-cat-warning">Necesitas crear categorías primero.</small>
                 </div>
-                <div class="form-group">
-                    <label>Beneficiario (Opcional)</label>
+                <div class="form-group" id="grp-trx-beneficiario">
+                    <label id="lbl-trx-beneficiario">Beneficiario (Opcional)</label>
                     <select id="trx-beneficiario">
                         <option value="">Seleccione Beneficiario</option>
                     </select>
@@ -327,7 +405,7 @@
                     </select>
                 </div>
                 <div class="form-group" id="grupo-fuente">
-                    <label>Origen / Destino de los Fondos (Cuenta o Tarjeta)</label>
+                    <label id="lbl-trx-fuente">Origen de los Fondos</label>
                     <select id="trx-fuente" required>
                         <option value="">Cargando fuentes...</option>
                     </select>
@@ -345,9 +423,9 @@
                         <input type="date" id="trx-fecha" required>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Descripción</label>
-                    <input type="text" id="trx-descripcion" required placeholder="Ej: Pago de quincena">
+                <div class="form-group" id="grp-trx-descripcion">
+                    <label>Descripción (Opcional)</label>
+                    <input type="text" id="trx-descripcion" placeholder="Ej: Pago de quincena">
                 </div>
                 <button type="submit" class="btn btn-success btn-block">Registrar Movimiento</button>
             </form>
@@ -437,6 +515,65 @@
             </form>
         </div>
     </div>
+
+    <!-- Modal Nuevo Item Recurrente -->
+    <div class="modal-overlay" id="modal-recurrente">
+        <div class="modal-content glass-panel">
+            <button class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="modal-title">Nuevo Item Recurrente</h2>
+            <form id="form-recurrente">
+                <div class="form-group">
+                    <label>Nombre / Descripción</label>
+                    <input type="text" id="rec-nombre" required placeholder="Ej: Suscripción Netflix">
+                </div>
+                <div class="grid-2" style="gap: 15px; margin-bottom: 0;">
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select id="rec-tipo" required>
+                            <option value="GASTO">Gasto Fijo</option>
+                            <option value="INGRESO">Ingreso Recurrente</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select id="rec-categoria" required>
+                            <option value="">Seleccione Categoría</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Monto por Defecto (Opcional)</label>
+                    <input type="number" id="rec-monto" placeholder="0.00" step="0.01">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Guardar Item</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Item Presupuesto -->
+    <div class="modal-overlay" id="modal-presupuesto-item">
+        <div class="modal-content glass-panel">
+            <button class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="modal-title">Ajustar Planeación</h2>
+            <form id="form-presupuesto-item">
+                <div class="form-group">
+                    <label id="lbl-pre-item-nombre" style="font-weight: 600;">Item Name</label>
+                </div>
+                <div class="form-group">
+                    <label>Monto Planeado</label>
+                    <input type="number" id="pre-monto-planeado" required step="0.01">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Actualizar Presupuesto</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toasts Container -->
+    <div id="toast-container"></div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
 
     <!-- Toasts Container -->
     <div id="toast-container"></div>

@@ -146,6 +146,14 @@ export async function loadView(viewName) {
             case 'cuentas':
                 initCuentas();
                 break;
+            case 'presupuesto':
+                const { initPresupuesto } = await import('./components/presupuestos.js');
+                initPresupuesto();
+                break;
+            case 'recurrentes':
+                const { initRecurrentes } = await import('./components/recurrentes.js');
+                initRecurrentes();
+                break;
         }
     } catch (e) {
         console.error(`Error loading view ${viewName}:`, e);

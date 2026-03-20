@@ -141,5 +141,35 @@ export const api = {
     // Dashboard & Reportes
     getDashboardSummary: (workspaceId, anio, mes) => fetchAPI(`/api/dashboard/resumen-mensual?workspaceId=${workspaceId}&anio=${anio}&mes=${mes}`),
     
-    getGastosPorCategoria: (workspaceId, anio, mes) => fetchAPI(`/api/reportes/gastos-por-categoria?workspaceId=${workspaceId}&anio=${anio}&mes=${mes}`)
+    getGastosPorCategoria: (workspaceId, anio, mes) => fetchAPI(`/api/reportes/gastos-por-categoria?workspaceId=${workspaceId}&anio=${anio}&mes=${mes}`),
+
+    // Presupuestos
+    getPresupuesto: (workspaceId, anio, mes) => fetchAPI(`/api/presupuestos/${anio}/${mes}?workspaceId=${workspaceId}`),
+    getPresupuestoResumen: (workspaceId, anio, mes) => fetchAPI(`/api/presupuestos/${anio}/${mes}/resumen?workspaceId=${workspaceId}`),
+    generarPresupuesto: (payload) => fetchAPI('/api/presupuestos/generar', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    }),
+    updateItemPresupuesto: (id, payload) => fetchAPI(`/api/presupuestos/items/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+    }),
+
+    // Items Recurrentes
+    getItemsRecurrentes: (workspaceId, tipo = '') => {
+        let url = `/api/items-recurrentes?workspaceId=${workspaceId}`;
+        if (tipo) url += `&tipo=${tipo}`;
+        return fetchAPI(url);
+    },
+    createItemRecurrente: (payload) => fetchAPI('/api/items-recurrentes', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+    }),
+    updateItemRecurrente: (id, payload) => fetchAPI(`/api/items-recurrentes/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+    }),
+    deleteItemRecurrente: (id) => fetchAPI(`/api/items-recurrentes/${id}`, {
+        method: 'DELETE'
+    })
 };
