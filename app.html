@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Finanzas UFPS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="logo">
+                <i class="fa-solid fa-wallet"></i>
+                <span>Finanzas<strong>UFPS</strong></span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-view="dashboard">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-view="transacciones">
+                    <i class="fa-solid fa-money-bill-transfer"></i>
+                    <span>Transacciones</span>
+                </a>
+                <a href="#" class="nav-item" data-view="categorias">
+                    <i class="fa-solid fa-tags"></i>
+                    <span>Categorías</span>
+                </a>
+                <a href="#" class="nav-item" data-view="beneficiarios">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Beneficiarios</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <button class="mobile-toggle" id="mobile-toggle">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <h1 class="page-title" id="page-title">Dashboard</h1>
+                <div class="user-info">
+                    <select id="workspace-select" class="workspace-selector">
+                        <option value="">Cargando workspace...</option>
+                    </select>
+                    <div class="user-avatar" id="user-avatar-text">U</div>
+                    <button class="logout-btn" id="logout-btn" title="Cerrar Sesión">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Views Container -->
+            <div id="views-container">
+                <!-- Dashboard View -->
+                <div id="view-dashboard" class="view-section">
+                    <div class="grid-3">
+                        <div class="stat-card glass-panel">
+                            <div class="stat-info">
+                                <h3>Total Ingresos</h3>
+                                <div class="amount text-success" id="dash-ingresos">$0</div>
+                            </div>
+                            <div class="stat-icon inc"><i class="fa-solid fa-arrow-trend-up"></i></div>
+                        </div>
+                        <div class="stat-card glass-panel">
+                            <div class="stat-info">
+                                <h3>Total Gastos</h3>
+                                <div class="amount text-danger" id="dash-gastos">$0</div>
+                            </div>
+                            <div class="stat-icon exp"><i class="fa-solid fa-arrow-trend-down"></i></div>
+                        </div>
+                        <div class="stat-card glass-panel">
+                            <div class="stat-info">
+                                <h3>Balance Neto</h3>
+                                <div class="amount text-primary" id="dash-balance">$0</div>
+                            </div>
+                            <div class="stat-icon bal"><i class="fa-solid fa-scale-balanced"></i></div>
+                        </div>
+                    </div>
+                    
+                    <div class="grid-2">
+                        <div class="chart-container glass-panel">
+                            <h3>Gastos por Categoría</h3>
+                            <div class="chart-wrapper">
+                                <canvas id="chart-categorias"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-container glass-panel">
+                            <h3>Flujo Reciente (Últimas Trans.)</h3>
+                            <div class="table-container" style="height: 100%; overflow-y: auto;">
+                                <table id="dash-recent-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Desc</th>
+                                            <th>Monto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dash-recent-list">
+                                        <tr><td colspan="3" style="text-align: center;">Sin datos</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Categorias View -->
+                <div id="view-categorias" class="view-section hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="font-size: 1.25rem;">Mis Categorías</h2>
+                        <button class="btn btn-primary" id="btn-nueva-categoria">
+                            <i class="fa-solid fa-plus"></i> Nueva Categoría
+                        </button>
+                    </div>
+                    <div class="glass-panel table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Tipo</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-categorias">
+                                <tr><td colspan="4" style="text-align:center;">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Beneficiarios View -->
+                <div id="view-beneficiarios" class="view-section hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="font-size: 1.25rem;">Mis Beneficiarios</h2>
+                        <button class="btn btn-primary" id="btn-nuevo-beneficiario">
+                            <i class="fa-solid fa-plus"></i> Nuevo Beneficiario
+                        </button>
+                    </div>
+                    <div class="glass-panel table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-beneficiarios">
+                                <tr><td colspan="3" style="text-align:center;">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Transacciones View -->
+                <div id="view-transacciones" class="view-section hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="font-size: 1.25rem;">Historial de Movimientos</h2>
+                        <button class="btn btn-success" id="btn-nueva-transaccion">
+                            <i class="fa-solid fa-plus"></i> Registrar Movimiento
+                        </button>
+                    </div>
+                    <div class="glass-panel table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Categoría</th>
+                                    <th>Descripción</th>
+                                    <th>Beneficiario</th>
+                                    <th>Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-transacciones">
+                                <tr><td colspan="6" style="text-align:center;">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Background decoration -->
+    <div class="bg-shape shape-1" style="opacity: 0.1; position: fixed; z-index: -1;"></div>
+    <div class="bg-shape shape-2" style="opacity: 0.1; position: fixed; z-index: -1;"></div>
+
+    <!-- Modals -->
+    <!-- Modal Nueva Categoria -->
+    <div class="modal-overlay" id="modal-categoria">
+        <div class="modal-content glass-panel">
+            <button class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="modal-title">Nueva Categoría</h2>
+            <form id="form-categoria">
+                <div class="form-group">
+                    <label>Nombre de Categoría</label>
+                    <input type="text" id="cat-nombre" required placeholder="Ej: Supermercado">
+                </div>
+                <div class="form-group">
+                    <label>Tipo (INGRESO o GASTO)</label>
+                    <select id="cat-tipo" required>
+                        <option value="GASTO">GASTO</option>
+                        <option value="INGRESO">INGRESO</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Guardar Categoría</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo Beneficiario -->
+    <div class="modal-overlay" id="modal-beneficiario">
+        <div class="modal-content glass-panel">
+            <button class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="modal-title">Nuevo Beneficiario</h2>
+            <form id="form-beneficiario">
+                <div class="form-group">
+                    <label>Nombre del Beneficiario/Fuente</label>
+                    <input type="text" id="ben-nombre" required placeholder="Ej: Empresa S.A / Supermecados Exito">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Guardar Beneficiario</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Nueva Transaccion -->
+    <div class="modal-overlay" id="modal-transaccion">
+        <div class="modal-content glass-panel">
+            <button class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="modal-title">Registrar Movimiento</h2>
+            <form id="form-transaccion">
+                <div class="form-group">
+                    <label>Tipo de Movimiento</label>
+                    <select id="trx-tipo" required>
+                        <option value="GASTO">Gasto</option>
+                        <option value="INGRESO">Ingreso</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <select id="trx-categoria" required>
+                        <option value="">Seleccione Categoría</option>
+                    </select>
+                    <small style="color:var(--warning); display:none;" id="trx-cat-warning">Necesitas crear categorías primero.</small>
+                </div>
+                <div class="form-group">
+                    <label>Beneficiario (Opcional)</label>
+                    <select id="trx-beneficiario">
+                        <option value="">Seleccione Beneficiario</option>
+                    </select>
+                </div>
+                <div class="grid-2" style="gap: 15px; margin-bottom: 0;">
+                    <div class="form-group">
+                        <label>Monto</label>
+                        <div class="input-icon">
+                            <i class="fa-solid fa-dollar-sign"></i>
+                            <input type="number" step="0.01" id="trx-monto" required min="0.01">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="trx-fecha" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <input type="text" id="trx-descripcion" required placeholder="Ej: Pago de quincena">
+                </div>
+                <button type="submit" class="btn btn-success btn-block">Registrar Movimiento</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toasts Container -->
+    <div id="toast-container"></div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>
