@@ -179,26 +179,77 @@ async function loadTransacciones() {
     }
 }
 
+function buildTransactionPayload(formData) {
+    const { 
+        workspaceId, tipo, categoriaId, beneficiarioId, 
+        fecha, monto, descripcion, medioPago, cuentaId, tarjetaCreditoId 
+    } = formData;
+
+    if (!categoriaId) throw new Error('Debes seleccionar una categoría.');
+    if (!monto || monto <= 0) throw new Error('El monto debe ser mayor a 0.');
+
+    let payload = {
+        workspaceId: parseInt(workspaceId),
+        tipo,
+        categoriaId: parseInt(categoriaId),
+        fecha,
+        monto: parseFloat(monto),
+        descripcion
+    };
+
+    if (beneficiarioId) {
+        payload.beneficiarioId = parseInt(beneficiarioId);
+    }
+
+    // Reglas Estrictas del Backend
+    if (tipo === 'INGRESO') {
+        if (!cuentaId) throw new Error('Un INGRESO requiere asignar una cuenta de destino.');
+        payload.cuentaId = parseInt(cuentaId);
+        // NO enviar medioPago ni tarjetaCreditoId
+    } else if (tipo === 'GASTO') {
+        if (!medioPago) throw new Error('Un GASTO requiere un Medio de Pago.');
+        payload.medioPago = medioPago;
+
+        if (medioPago === 'EFECTIVO') {
+            if (!cuentaId) throw new Error('Si el medio es EFECTIVO, debes seleccionar una Cuenta.');
+            payload.cuentaId = parseInt(cuentaId);
+            // NO enviar tarjetaCreditoId
+        } else if (medioPago === 'TARJETA') {
+            if (!tarjetaCreditoId) throw new Error('Si el medio es TARJETA, debes seleccionar una Tarjeta de Crédito.');
+            payload.tarjetaCreditoId = parseInt(tarjetaCreditoId);
+            // NO enviar cuentaId
+        } else {
+            // Manejo de otros medios permitidos (Transferencia, etc) apoyados en Cuenta
+            if (!cuentaId) throw new Error(`El pago con ${medioPago} requiere una Cuenta originadora.`);
+            payload.cuentaId = parseInt(cuentaId);
+        }
+    }
+
+    return payload;
+}
+
 async function handleCreateTransaccion(e) {
     e.preventDefault();
     const btn = e.target.querySelector('button[type="submit"]');
     
-    const tipo = document.getElementById('trx-tipo').value;
-    const categoriaId = document.getElementById('trx-categoria').value;
-    const beneficiarioId = document.getElementById('trx-beneficiario').value;
-    const monto = document.getElementById('trx-monto').value;
-    const fecha = document.getElementById('trx-fecha').value;
-    const descripcion = document.getElementById('trx-descripcion').value;
-    const medioPago = document.getElementById('trx-medio-pago').value;
-    const cuentaId = document.getElementById('trx-cuenta').value;
+    const formData = {
+        workspaceId: AppState.workspaceId,
+        tipo: document.getElementById('trx-tipo').value,
+        categoriaId: document.getElementById('trx-categoria').value,
+        beneficiarioId: document.getElementById('trx-beneficiario').value,
+        monto: document.getElementById('trx-monto').value,
+        fecha: document.getElementById('trx-fecha').value,
+        descripcion: document.getElementById('trx-descripcion').value,
+        medioPago: document.getElementById('trx-medio-pago').value,
+        cuentaId: document.getElementById('trx-cuenta').value,
+        tarjetaCreditoId: null // Aún no soportado en vista HTML
+    };
 
-    if (!categoriaId) {
-        showToast('Debes seleccionar una categoría.', 'error');
-        return;
-    }
-
-    if (!cuentaId) {
-        showToast('Debes seleccionar una Cuenta de origen/destino.', 'error');
+    let payload;
+    try {
+        payload = buildTransactionPayload(formData);
+    } catch (validationError) {
+        showToast(validationError.message, 'error');
         return;
     }
 
@@ -206,28 +257,13 @@ async function handleCreateTransaccion(e) {
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-sm"></span> Guardando...';
 
-        const payload = {
-            workspaceId: parseInt(AppState.workspaceId),
-            tipo: tipo,
-            categoriaId: parseInt(categoriaId),
-            fecha: fecha,
-            monto: parseFloat(monto),
-            descripcion: descripcion,
-            medioPago: medioPago,
-            cuentaId: parseInt(cuentaId)
-        };
-
-        if (beneficiarioId) {
-            payload.beneficiarioId = parseInt(beneficiarioId);
-        }
-
         await api.createTransaccion(payload);
         showToast('Movimiento registrado exitosamente');
         modalCtx.close();
         
         await loadTransacciones();
     } catch (error) {
-        showToast(error.message || 'Error al registrar el movimiento. ¿Tal vez hace falta una Cuenta interna en el servidor?', 'error');
+        showToast(error.message || 'Error al registrar el movimiento', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = 'Registrar Movimiento';
