@@ -3,7 +3,9 @@ import { AppState } from '../app.js';
 import { showToast, initModal, formatCurrency } from '../utils.js';
 
 let modalCtx = null;
+let modalTarCtx = null;
 export let cuentaEditId = null;
+export let tarjetaEditId = null;
 
 export async function initCuentas() {
     if (!modalCtx) {
@@ -39,7 +41,37 @@ export async function initCuentas() {
         });
     }
 
-    await loadCuentas();
+    if (!modalTarCtx) {
+        modalTarCtx = initModal('modal-tarjeta');
+        
+        document.getElementById('btn-nueva-tarjeta').addEventListener('click', () => {
+            tarjetaEditId = null;
+            document.getElementById('form-tarjeta').reset();
+            document.querySelector('#modal-tarjeta .modal-title').textContent = 'Nueva Tarjeta de Crédito';
+            modalTarCtx.open();
+        });
+
+        document.getElementById('form-tarjeta').addEventListener('submit', handleSaveTarjeta);
+        
+        // Event delegation for table buttons (Tarjetas)
+        document.getElementById('lista-tarjetas').addEventListener('click', async (e) => {
+            const btnDelete = e.target.closest('.btn-delete-tar');
+            if (btnDelete) {
+                const id = btnDelete.dataset.id;
+                if (confirm('¿Seguro que deseas eliminar esta tarjeta permanentemente?')) {
+                    await deleteTarjeta(id);
+                }
+            }
+
+            const btnEdit = e.target.closest('.btn-edit-tar');
+            if (btnEdit) {
+                const id = btnEdit.dataset.id;
+                openEditTarjeta(id);
+            }
+        });
+    }
+
+    await Promise.all([loadCuentas(), loadTarjetas()]);
 }
 
 async function loadCuentas() {
@@ -139,6 +171,105 @@ async function deleteCuenta(id) {
         await api.deleteCuenta(id);
         showToast('Cuenta eliminada');
         await loadCuentas();
+    } catch (error) {
+        showToast(error.message || 'Error al eliminar', 'error');
+    }
+}
+
+// ============== LÓGICA TARJETAS =================
+
+async function loadTarjetas() {
+    const tbody = document.getElementById('lista-tarjetas');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><span class="spinner-sm"></span> Cargando...</td></tr>';
+    
+    try {
+        const response = await api.getCreditCards(AppState.workspaceId);
+        AppState.tarjetas = response.data || [];
+        
+        if (AppState.tarjetas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-muted);">No hay tarjetas registradas.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        AppState.tarjetas.forEach(t => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>#${t.id}</td>
+                <td style="font-weight: 500;">${t.nombre} <br><small class="text-muted">${t.franquicia || 'N/A'}</small></td>
+                <td class="font-bold">${formatCurrency(t.cupo)}</td>
+                <td>Día ${t.diaCorte}</td>
+                <td>Día ${t.diaPago}</td>
+                <td>
+                    <button class="btn btn-edit-tar" data-id="${t.id}" style="padding: 6px 10px; background: transparent; color: var(--warning); border: 1px solid var(--warning);"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-delete-tar" data-id="${t.id}" style="padding: 6px 10px; background: transparent; color: var(--danger); border: 1px solid var(--danger);"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;" class="text-danger">Error: ${error.message}</td></tr>`;
+        showToast('Error al cargar tarjetas', 'error');
+    }
+}
+
+async function handleSaveTarjeta(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    
+    const payload = {
+        workspaceId: parseInt(AppState.workspaceId),
+        nombre: document.getElementById('tar-nombre').value,
+        franquicia: document.getElementById('tar-franquicia').value,
+        moneda: document.getElementById('tar-moneda').value,
+        cupo: parseFloat(document.getElementById('tar-cupo').value) || 0,
+        diaCorte: parseInt(document.getElementById('tar-corte').value) || 1,
+        diaPago: parseInt(document.getElementById('tar-pago').value) || 1
+    };
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-sm"></span> Guardando...';
+
+        if (tarjetaEditId) {
+            await api.updateCreditCard(tarjetaEditId, payload);
+            showToast('Tarjeta actualizada exitosamente');
+        } else {
+            await api.createCreditCard(payload);
+            showToast('Tarjeta creada exitosamente');
+        }
+        
+        modalTarCtx.close();
+        await loadTarjetas();
+    } catch (error) {
+        showToast(error.message || 'Error al guardar la tarjeta', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Guardar Tarjeta';
+    }
+}
+
+function openEditTarjeta(id) {
+    const t = AppState.tarjetas.find(x => x.id == id);
+    if (!t) return;
+    
+    tarjetaEditId = t.id;
+    document.getElementById('tar-nombre').value = t.nombre;
+    if(t.franquicia) document.getElementById('tar-franquicia').value = t.franquicia;
+    document.getElementById('tar-moneda').value = t.moneda || 'COP';
+    document.getElementById('tar-cupo').value = t.cupo || 0;
+    document.getElementById('tar-corte').value = t.diaCorte || 1;
+    document.getElementById('tar-pago').value = t.diaPago || 1;
+    
+    document.querySelector('#modal-tarjeta .modal-title').textContent = 'Editar Tarjeta';
+    modalTarCtx.open();
+}
+
+async function deleteTarjeta(id) {
+    try {
+        await api.deleteCreditCard(id);
+        showToast('Tarjeta eliminada');
+        await loadTarjetas();
     } catch (error) {
         showToast(error.message || 'Error al eliminar', 'error');
     }

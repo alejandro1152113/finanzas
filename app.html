@@ -168,14 +168,14 @@
                 </div>
 
                 <!-- Cuentas View -->
-                <div id="view-cuentas" class="view-section" style="display: none;">
+                <div id="view-cuentas" class="view-section hidden">
                     <div class="flex-between" style="margin-bottom: 20px;">
-                        <h2>Mis Cuentas y Billeteras</h2>
+                        <h2>Mis Cuentas Bancarias</h2>
                         <button class="btn btn-primary" id="btn-nueva-cuenta">
                             <i class="fa-solid fa-plus"></i> Nueva Cuenta
                         </button>
                     </div>
-                    <div class="glass-panel table-container">
+                    <div class="glass-panel table-container" style="margin-bottom: 30px;">
                         <table>
                             <thead>
                                 <tr>
@@ -188,6 +188,30 @@
                                 </tr>
                             </thead>
                             <tbody id="lista-cuentas">
+                                <tr><td colspan="6" style="text-align:center;">Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex-between" style="margin-bottom: 20px;">
+                        <h2>Mis Tarjetas de Crédito</h2>
+                        <button class="btn btn-primary" id="btn-nueva-tarjeta">
+                            <i class="fa-solid fa-plus"></i> Nueva Tarjeta
+                        </button>
+                    </div>
+                    <div class="glass-panel table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre / Franquicia</th>
+                                    <th>Cupo (Límite)</th>
+                                    <th>Día Corte</th>
+                                    <th>Día Pago</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-tarjetas">
                                 <tr><td colspan="6" style="text-align:center;">Cargando...</td></tr>
                             </tbody>
                         </table>
@@ -363,6 +387,53 @@
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary btn-block" style="margin-top: 20px;">Guardar Cuenta</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Nueva Tarjeta -->
+    <div class="modal-overlay" id="modal-tarjeta">
+        <div class="modal-content glass-panel">
+            <button class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="modal-title">Nueva Tarjeta de Crédito</h2>
+            <form id="form-tarjeta">
+                <div class="form-group">
+                    <label>Nombre de la Tarjeta</label>
+                    <input type="text" id="tar-nombre" required placeholder="Ej. Tarjeta de Gastos Virtual">
+                </div>
+                <div class="grid-2" style="gap: 15px; margin-bottom: 0;">
+                    <div class="form-group">
+                        <label>Franquicia</label>
+                        <select id="tar-franquicia" required>
+                            <option value="VISA">VISA</option>
+                            <option value="MASTERCARD">MASTERCARD</option>
+                            <option value="AMEX">AMERICAN EXPRESS</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Moneda</label>
+                        <select id="tar-moneda" required>
+                            <option value="COP">COP (Pesos Colombianos)</option>
+                            <option value="USD">USD (Dólares)</option>
+                            <option value="EUR">EUR (Euros)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Cupo Autorizado (Límite)</label>
+                    <input type="number" id="tar-cupo" required placeholder="0.00" step="0.01">
+                </div>
+                <div class="grid-2" style="gap: 15px; margin-bottom: 0;">
+                    <div class="form-group">
+                        <label>Día de Corte (1-31)</label>
+                        <input type="number" id="tar-corte" required min="1" max="31">
+                    </div>
+                    <div class="form-group">
+                        <label>Día Límite Pago (1-31)</label>
+                        <input type="number" id="tar-pago" required min="1" max="31">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" style="margin-top: 20px;">Guardar Tarjeta</button>
             </form>
         </div>
     </div>

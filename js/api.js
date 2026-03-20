@@ -80,6 +80,8 @@ export const api = {
     // Tarjetas
     getCreditCards: (workspaceId) => fetchAPI(`/api/credit-cards?workspaceId=${workspaceId}`),
     createCreditCard: (payload) => fetchAPI('/api/credit-cards', { method: 'POST', body: JSON.stringify(payload) }),
+    updateCreditCard: (id, payload) => fetchAPI(`/api/credit-cards/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    deleteCreditCard: (id) => fetchAPI(`/api/credit-cards/${id}`, { method: 'DELETE' }),
 
     updateCuenta: (id, payload) => fetchAPI(`/api/cuentas/${id}`, {
         method: 'PUT',
